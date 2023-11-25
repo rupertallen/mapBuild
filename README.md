@@ -1,2 +1,2 @@
 # mapBuild
-Build a map on a  grid
+Build a map on a grid
