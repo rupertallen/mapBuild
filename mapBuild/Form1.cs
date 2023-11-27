@@ -23,7 +23,7 @@ namespace pdfScratcher
             Large = 18,
             Huge = 20,
             Massive = 30,
-            SuperSized = 50
+            SuperSized = 50 
         }
 
         enum MapType
@@ -109,59 +109,88 @@ namespace pdfScratcher
                         row.Style.BackgroundBrush = MapSquareColor(MapSquareType.Land);
                     }
                     return grid;
+                case MapType.Lakes:
+                    return CreateIslands(
+                        grid,
+                        mapsize,
+                        (int)mapsize * 4, // Number of islands
+                        (1, (int)mapsize * 10), // Range of size of islands
+                        10, // Percent chance of island growth to reset to center
+                        25 // Percent chance for mountains
+                        );
                 case MapType.WaterWorlds:
-                    foreach (PdfGridRow row in grid.Rows)
-                    {
-                        row.Style.BackgroundBrush = MapSquareColor(MapSquareType.Ocean);
-                    }
-                    int islandCount = (int)mapsize / 4;
-                    Debug.WriteLine("islandCount = " + islandCount);
-                    for (int i = 0;i < islandCount;i++)
-                    {
-                        int startX = new Random().Next((int)mapsize - 1);
-                        int startY = new Random().Next((int)mapsize - 1);
-                        grid.Rows[startX].Cells[startY].Style.BackgroundBrush = MapSquareColor(MapSquareType.Land);
-                        int islandSize = new Random().Next(1, (int)mapsize * 2);
-                        int x = startX;
-                        int y = startY;
-                        for (int s = 0;s < islandSize;s++)
-                        {
-                            int chance = new Random().Next(1, 100);
-                            if (chance > 50) { x = startX; y = startY; }
-                            int d = new Random().Next(1, 4);
-                            Direction direction = (Direction)d;
-                            switch (direction)
-                            {
-                                case Direction.North:
-                                    if (y != 0) y--;
-                                    break;
-                                case Direction.South:
-                                    if (y != (int)mapsize - 1) y++;
-                                    break;
-                                case Direction.East:
-                                    if (x != (int)mapsize - 1) x++;
-                                    break;
-                                case Direction.West:
-                                    if (x != 0) x--;
-                                    break;
-                                default:
-                                    throw new NotImplementedException();
-                            }
-                            int typeChance = new Random().Next(1, 100);
-                            if (typeChance > 10)
-                            {
-                                grid.Rows[x].Cells[y].Style.BackgroundBrush = MapSquareColor(MapSquareType.Land);
-                            }
-                            else
-                            {
-                                grid.Rows[x].Cells[y].Style.BackgroundBrush = MapSquareColor(MapSquareType.Mountain);
-                            }
-                        }
-                    }
-                    return grid;
+                    return CreateIslands(
+                        grid,
+                        mapsize,
+                        (int)mapsize / 4, // Number of islands
+                        (1, (int)mapsize * 2), // Range of size of islands
+                        50, // Percent chance of island growth to reset to center
+                        15 // Percent chance for mountains
+                        );
+                case MapType.Archipelago:
+                    return CreateIslands(
+                        grid, 
+                        mapsize,
+                        (int)mapsize / 2, // Number of islands
+                        (1, (int)mapsize * 20) , // Range of size of islands
+                        10, // Percent chance of island growth to reset to center
+                        25 // Percent chance for mountains
+                        ); 
                 default:
                     throw new NotImplementedException();
             }
+        }
+
+        private PdfGrid CreateIslands(PdfGrid grid, MapSize mapsize, int islandCount, (int, int) islandSizeRange, int percentChanceToReCenterGeneration, int percentChanceForMountains)
+        {
+            foreach (PdfGridRow row in grid.Rows)
+            {
+                row.Style.BackgroundBrush = MapSquareColor(MapSquareType.Ocean);
+            }
+            Debug.WriteLine("islandCount = " + islandCount);
+            for (int i = 0; i < islandCount; i++)
+            {
+                int startX = new Random().Next((int)mapsize - 1);
+                int startY = new Random().Next((int)mapsize - 1);
+                grid.Rows[startX].Cells[startY].Style.BackgroundBrush = MapSquareColor(MapSquareType.Land);
+                int islandSizeResult = new Random().Next(islandSizeRange.Item1, islandSizeRange.Item2);
+                int x = startX;
+                int y = startY;
+                for (int s = 0; s < islandSizeResult; s++)
+                {
+                    int chance = new Random().Next(1, 100);
+                    if (chance > percentChanceToReCenterGeneration) { x = startX; y = startY; }
+                    int d = new Random().Next(1, 4);
+                    Direction direction = (Direction)d;
+                    switch (direction)
+                    {
+                        case Direction.North:
+                            if (y != 0) y--;
+                            break;
+                        case Direction.South:
+                            if (y != (int)mapsize - 1) y++;
+                            break;
+                        case Direction.East:
+                            if (x != (int)mapsize - 1) x++;
+                            break;
+                        case Direction.West:
+                            if (x != 0) x--;
+                            break;
+                        default:
+                            throw new NotImplementedException();
+                    }
+                    int typeChance = new Random().Next(1, 100);
+                    if (typeChance > percentChanceForMountains)
+                    {
+                        grid.Rows[x].Cells[y].Style.BackgroundBrush = MapSquareColor(MapSquareType.Land);
+                    }
+                    else
+                    {
+                        grid.Rows[x].Cells[y].Style.BackgroundBrush = MapSquareColor(MapSquareType.Mountain);
+                    }
+                }
+            }
+            return grid;
         }
 
         private void btnGeneratePDF_Click(object sender, EventArgs e)
@@ -179,7 +208,7 @@ namespace pdfScratcher
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            CreateMap(MapSize.Normal, CanvasSize.Default, MapType.WaterWorlds).SaveToFile(PDFLocation);
+            CreateMap(MapSize.Normal, CanvasSize.Default, MapType.Drylands).SaveToFile(PDFLocation);
             Process.Start("cmd", "/c start msedge " + PDFLocation);
             foreach (var item in Enum.GetValues(typeof(MapSize)))
             {
